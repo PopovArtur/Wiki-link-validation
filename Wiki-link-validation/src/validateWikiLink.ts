@@ -2,7 +2,6 @@ import { chromium } from 'playwright';
 import prompt from 'prompt-sync';
 import fs from 'fs';
 
-// Initialize prompt-sync
 const promptSync = prompt();
 
 /**
@@ -16,50 +15,51 @@ const isValidWikiLink = (url: string): boolean => {
 };
 
 /**
- * Scrape Wikipedia links from a given URL
+ * Validate and scrape Wikipedia link
  * @param {string} url - The Wikipedia URL
- * @returns {Promise<string[]>} - A list of embedded Wikipedia links
  */
-const scrapeWikiLinks = async (url: string): Promise<string[]> => {
+const validateWikiLink = async (url: string): Promise<string[]> => {
+  if (!isValidWikiLink(url)) {
+    throw new Error('Invalid Wikipedia link');
+  }
+
   const browser = await chromium.launch();
   const context = await browser.newContext();
   const page = await context.newPage();
 
   try {
     await page.goto(url, { waitUntil: 'domcontentloaded' });
+    const title = await page.title();
+    console.log(`Page title: ${title}`);
 
     const links = await page.$$eval('a[href^="/wiki/"]', anchors =>
-      anchors
-        .map(anchor => (anchor as HTMLAnchorElement).getAttribute('href'))
-        .filter((href): href is string => href !== null) // Filter out null hrefs
-        .map(href => `https://en.wikipedia.org${href}`)
-        .filter(link => !link.includes(':')) // Exclude administrative links
+      anchors.map(anchor => (anchor as HTMLAnchorElement).href).filter((href, index, self) => self.indexOf(href) === index)
     );
 
-    // Ensure links are unique and return only the top 10
-    const uniqueFullLinks = Array.from(new Set(links)).slice(0, 10);
-    
-    return uniqueFullLinks;
+    const uniqueLinks = links
+      .filter(link => isValidWikiLink(link))
+      .slice(0, 10);
+    return uniqueLinks;
+
   } catch (error: unknown) {
     // Handle error as an Error type explicitly
     if (error instanceof Error) {
-      console.error('Failed to load the page: ', error.message);
+      throw new Error('Failed to load the page: ' + error.message);
     } else {
-      console.error('Unknown error occurred');
+      throw new Error('Unknown error occurred');
     }
-    return [];
   } finally {
     await browser.close();
   }
 };
 
 (async () => {
-  const wikipediaLink = promptSync('Please provide a Wikipedia link: ').trim();  // Get user input here
+  const wikipediaLink = promptSync('Please provide a Wikipedia link: ').trim(); // Get user input
   const cycleInput = promptSync('Please provide a number of cycles (1 to 3): ').trim();
   const numCycles = parseInt(cycleInput, 10);
 
-  if (!isValidWikiLink(wikipediaLink)) {
-    console.error('Invalid Wikipedia link provided.');
+  if (!wikipediaLink) {
+    console.error('Wikipedia link is required.');
     process.exit(1);
   }
 
@@ -68,45 +68,48 @@ const scrapeWikiLinks = async (url: string): Promise<string[]> => {
     process.exit(1);
   }
 
-  const allLinks = new Set<string>();  // Store all unique links found
-  const visitedLinks = new Set<string>();  // Keep track of visited links
+  // Initialize Set with the first input link
+  const allLinks = new Set<string>([wikipediaLink]);
 
   try {
-    let currentCycleLinks = [wikipediaLink];
-    
+    // Iterate through each cycle
     for (let cycle = 0; cycle < numCycles; cycle++) {
+      // Get list of links to process in the current cycle
+      const currentCycleLinks = [...allLinks];
+      console.log('Current links: ' + currentCycleLinks);
       const newLinks: string[] = [];
 
+      // Process each link in the current cycle's list
       for (const link of currentCycleLinks) {
-        if (!visitedLinks.has(link)) {
-          console.log(`Visiting link: ${link}`);
-          const links = await scrapeWikiLinks(link);
-          links.forEach(l => {
-            if (!visitedLinks.has(l) && !allLinks.has(l)) {
-              newLinks.push(l);
-            }
-          });
-          visitedLinks.add(link); // Mark the link as visited
-        }
+        const links = await validateWikiLink(link);
+        // Collect new unique links found in the current cycle
+        links.forEach(l => {
+          if (!allLinks.has(l)) {
+            newLinks.push(l);
+          }
+        });
       }
 
-      newLinks.forEach(link => allLinks.add(link));  // Add new unique links to the allLinks set
-      currentCycleLinks = newLinks;  // Update the currentCycleLinks for the next iteration
+      // Update allLinks with the new unique links
+      newLinks.forEach(link => allLinks.add(link));
 
       console.log(`Cycle ${cycle + 1} completed. New links found:`);
       console.log(newLinks);
     }
 
+    console.log('Scraping completed. All unique links found:');
+    const allLinksArray = [...allLinks];
+    console.log(allLinksArray);
+
+    // Write results to a JSON file
     const results = {
-      allLinks: Array.from(allLinks),
-      totalCount: allLinks.size,
+      allLinks: allLinksArray,
+      totalCount: allLinksArray.length,
+      uniqueCount: allLinksArray.length, // Unique count, which is the same as the total count for a Set
     };
 
     fs.writeFileSync('results.json', JSON.stringify(results, null, 2));
     console.log('Results written to results.json');
-
-    console.log('Scraping completed. All unique links found:');
-    console.log(results.allLinks);
 
   } catch (error: unknown) {
     // Handle error as an Error type explicitly
