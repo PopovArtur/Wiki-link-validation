@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "wiki-url-validation": "npx ts-node src/validateWikiLink.ts"
+    "wiki-url-validation": "npx ts-node src/main.ts"
   },
   "keywords": [],
   "author": "",

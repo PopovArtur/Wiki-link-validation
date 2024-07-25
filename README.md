@@ -33,7 +33,7 @@ The results, including all unique links and their counts, are saved to a JSON fi
 1. **Start the script**:
 
     ```bash
-    npx ts-node src/validateWikiLink.ts  
+    npx ts-node src/main.ts  
     ```
 
 2. **Input the required information**:
