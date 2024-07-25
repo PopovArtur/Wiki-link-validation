@@ -7,6 +7,7 @@ import { writeResultsToFile } from './utils/file';
     const { wikipediaLink, numCycles } = getUserInput();
 
     const allLinks = new Set<string>([wikipediaLink]);
+    const amountOfDesiredExpectedUniqueLinks = 10;
 
     // Iterate through each cycle
     for (let cycle = 0; cycle < numCycles; cycle++) {
@@ -16,7 +17,7 @@ import { writeResultsToFile } from './utils/file';
       for (const link of currentCycleLinks) {
         const links = await validateWikiLink(link);
         links.forEach(l => {
-          if (!allLinks.has(l)) {
+          if (!allLinks.has(l) && newLinks.length < amountOfDesiredExpectedUniqueLinks) {
             newLinks.push(l);
           }
         });

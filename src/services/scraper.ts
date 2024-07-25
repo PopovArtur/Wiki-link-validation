@@ -23,11 +23,10 @@ export const validateWikiLink = async (url: string): Promise<string[]> => {
       anchors.map(anchor => (anchor as HTMLAnchorElement).href).filter((href, index, self) => self.indexOf(href) === index)
     );
 
-    const uniqueLinks = links
-      .filter(link => isValidWikiLink(link))
-      .slice(0, 10);
+    const validLinks = links
+      .filter(link => isValidWikiLink(link));
 
-    return uniqueLinks;
+    return validLinks;
 
   } catch (error: unknown) {
     if (error instanceof Error) {
