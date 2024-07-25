@@ -76,7 +76,6 @@ const validateWikiLink = async (url: string): Promise<string[]> => {
     for (let cycle = 0; cycle < numCycles; cycle++) {
       // Get list of links to process in the current cycle
       const currentCycleLinks = [...allLinks];
-      console.log('Current links: ' + currentCycleLinks);
       const newLinks: string[] = [];
 
       // Process each link in the current cycle's list
